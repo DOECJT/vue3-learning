@@ -8,7 +8,23 @@ const app = {
     },
     children: 'click me'
 };
-function render(vnode, root) {
+const MyComponent = {
+    render() {
+        return {
+            tag: 'div',
+            props: {
+                onClick() {
+                    console.log('I am a component.');
+                }
+            },
+            children: 'component'
+        };
+    }
+};
+const MyComponentVNode = {
+    tag: MyComponent
+};
+function mountElement(vnode, root) {
     const el = document.createElement(vnode.tag);
     Object.keys(vnode.props).forEach(key => {
         if (key.startsWith('on')) {
@@ -25,7 +41,19 @@ function render(vnode, root) {
     }
     root.appendChild(el);
 }
+function mountComponent(vnode, root) {
+    const node = vnode.tag.render();
+    render(node, root);
+}
+function render(vnode, root) {
+    if (typeof vnode.tag === 'string') {
+        mountElement(vnode, root);
+    }
+    else if (typeof vnode.tag.render === 'function') {
+        mountComponent(vnode, root);
+    }
+}
 const root = document.querySelector('#app');
 if (root) {
-    render(app, root);
+    render(MyComponentVNode, root);
 }
