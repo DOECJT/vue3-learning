@@ -1,76 +1,73 @@
-type Component = {
-  render(): VNode
-}
+type Func = (...args: any[]) => any
 
-type ElementVNode = {
-  tag: string
-  props: Record<string, any>
-  children: VNode[] | string
-}
-type ComponentVNode = {
-  tag: Component
-}
-type VNode = ElementVNode | ComponentVNode
+const bucket = new WeakMap<object, any>()
+let activeEffect: Func | undefined
 
-const app: VNode = {
-  tag: 'div',
-  props: {
-    onClick() {
-      console.log('hello')
-    }
+const data = {
+  text: 'hello world'
+}
+function track<O extends object>(target: O, key: keyof O) {
+  if (!activeEffect) return
+  if (!bucket.get(target)) {
+    const m = new Map()
+    bucket.set(target, m)
+  }
+  if (!bucket.get(target).get(key)) {
+    const s = new Set()
+    bucket.get(target).set(key, s)
+  }
+  bucket.get(target).get(key).add(activeEffect)
+}
+function trigger<O extends object>(target: O, key: keyof O) {
+  const m = bucket.get(target)
+  if (!m) return
+  const s = m.get(key)
+  if (!s) return
+  s.forEach((fn: Func) => fn())
+}
+const obj: any = new Proxy(data, {
+  get: function <O extends object>(target: O, key: keyof O) {
+    track(target, key)
+    
+    return target[key]
   },
-  children: 'click me'
+  set: function <O extends object>(target: O, key: keyof O, newValue: any) {
+    target[key] = newValue
+    
+    trigger(target, key)
+    
+    return true
+  }
+})
+
+function effect(fn: Func) {
+  activeEffect = fn
+  fn()
 }
-const MyComponent: Component = {
-  render() {
-    return {
-      tag: 'div',
-      props: {
-        onClick() {
-          console.log('I am a component.')
-        }
-      },
-      children: 'component'
-    }
+function greet() {
+  console.log('greet')
+  const root = document.querySelector('#app') as HTMLElement
+  if (root) {
+    root.innerText = obj.text
   }
 }
-const MyComponentVNode: ComponentVNode = {
-  tag: MyComponent
-}
-
-function mountElement(vnode: ElementVNode, root: Element) {
-  const el = document.createElement(vnode.tag)
-  
-  Object.keys(vnode.props).forEach(key => {
-    if (key.startsWith('on')) {
-      el.addEventListener(key.substring(2).toLocaleLowerCase(), vnode.props[key])
-    }
+function init() {
+  createButton('text: vue3', () => {
+    obj.text = 'hello vue3'
   })
-  if (typeof vnode.children === 'string') {
-    el.innerText = vnode.children
-  } else {
-    for (let child of vnode.children) {
-      render(child, el)
-    }
-  }
+  createButton('noExist: xixi', () => {
+    obj.noExist = 'xixi'
+  })
 
-  root.appendChild(el)
+  effect(greet)
 }
-
-function mountComponent(vnode: ComponentVNode, root: Element) {
-  const node = vnode.tag.render()
-  render(node, root)
-}
-
-function render(vnode: VNode, root: Element) {
-  if (typeof vnode.tag === 'string') {
-    mountElement(vnode as ElementVNode, root)
-  } else if (typeof vnode.tag.render === 'function') {
-    mountComponent(vnode as ComponentVNode, root)
+function createButton(info: string, handler: Func) {
+  const button = document.createElement('button')
+  button.innerText = info
+  button.addEventListener('click', handler)
+  const container = document.querySelector('#controller')
+  if (container) {
+    container.appendChild(button)
   }
 }
-
-const root = document.querySelector('#app')
-if (root) {
-  render(MyComponentVNode, root)
-}
+init()
