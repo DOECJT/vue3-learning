@@ -1,9 +1,6 @@
 "use strict";
 const bucket = new WeakMap();
 let activeEffect;
-const data = {
-    text: 'hello world'
-};
 function track(target, key) {
     if (!activeEffect)
         return;
@@ -15,7 +12,9 @@ function track(target, key) {
         const s = new Set();
         bucket.get(target).set(key, s);
     }
-    bucket.get(target).get(key).add(activeEffect);
+    const dep = bucket.get(target).get(key);
+    dep.add(activeEffect);
+    activeEffect.deps.push(dep);
 }
 function trigger(target, key) {
     const m = bucket.get(target);
@@ -24,38 +23,66 @@ function trigger(target, key) {
     const s = m.get(key);
     if (!s)
         return;
-    s.forEach((fn) => fn());
+    const newDep = new Set(s);
+    newDep.forEach((fn) => fn());
 }
-const obj = new Proxy(data, {
-    get: function (target, key) {
-        track(target, key);
-        return target[key];
-    },
-    set: function (target, key, newValue) {
-        target[key] = newValue;
-        trigger(target, key);
-        return true;
-    }
-});
+function observe(data) {
+    return new Proxy(data, {
+        get: function (target, key) {
+            track(target, key);
+            return target[key];
+        },
+        set: function (target, key, newValue) {
+            target[key] = newValue;
+            trigger(target, key);
+            return true;
+        }
+    });
+}
+function cleanup(effectFn) {
+    effectFn.deps.forEach((dep) => {
+        dep.delete(effectFn);
+    });
+    effectFn.deps.length = 0;
+}
 function effect(fn) {
-    activeEffect = fn;
-    fn();
+    const effectFn = () => {
+        activeEffect = effectFn;
+        cleanup(effectFn);
+        fn();
+    };
+    effectFn.deps = [];
+    effectFn();
 }
+// call
+const data = {
+    foo: true,
+    bar: true,
+};
+const obj = observe(data);
+let temp1, temp2;
 function greet() {
     console.log('greet');
     const root = document.querySelector('#app');
     if (root) {
-        root.innerText = obj.text;
+        root.innerText = obj.ok ? obj.text : 'not';
     }
 }
 function init() {
-    createButton('text: vue3', () => {
-        obj.text = 'hello vue3';
+    createButton('foo: any', () => {
+        obj.foo = 'xixi';
     });
-    createButton('noExist: xixi', () => {
-        obj.noExist = 'xixi';
+    createButton('bar: any', () => {
+        obj.bar = 'haha';
     });
-    effect(greet);
+    effect(function effectFn1() {
+        console.log('effectFn1 执行');
+        effect(function effectFn2() {
+            console.log('effectFn2 执行');
+            temp2 = obj.bar;
+        });
+        temp1 = obj.foo;
+    });
 }
 function createButton(info, handler) {
     const button = document.createElement('button');

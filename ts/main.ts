@@ -1,11 +1,9 @@
+// implement
 type Func = (...args: any[]) => any
 
 const bucket = new WeakMap<object, any>()
-let activeEffect: Func | undefined
+let activeEffect: any
 
-const data = {
-  text: 'hello world'
-}
 function track<O extends object>(target: O, key: keyof O) {
   if (!activeEffect) return
   if (!bucket.get(target)) {
@@ -16,50 +14,88 @@ function track<O extends object>(target: O, key: keyof O) {
     const s = new Set()
     bucket.get(target).set(key, s)
   }
-  bucket.get(target).get(key).add(activeEffect)
+  const dep = bucket.get(target).get(key)
+  dep.add(activeEffect)
+  activeEffect.deps.push(dep)
 }
 function trigger<O extends object>(target: O, key: keyof O) {
   const m = bucket.get(target)
   if (!m) return
-  const s = m.get(key)
+  const s = m.get(key) as Set<Func>
   if (!s) return
-  s.forEach((fn: Func) => fn())
+  const newDep = new Set(s)
+  newDep.forEach((fn) => fn())
 }
-const obj: any = new Proxy(data, {
-  get: function <O extends object>(target: O, key: keyof O) {
-    track(target, key)
-    
-    return target[key]
-  },
-  set: function <O extends object>(target: O, key: keyof O, newValue: any) {
-    target[key] = newValue
-    
-    trigger(target, key)
-    
-    return true
-  }
-})
 
-function effect(fn: Func) {
-  activeEffect = fn
-  fn()
+function observe(data: object) {
+  return new Proxy(data, {
+    get: function <O extends object>(target: O, key: keyof O) {
+      track(target, key)
+      
+      return target[key]
+    },
+    set: function <O extends object>(target: O, key: keyof O, newValue: any) {
+      target[key] = newValue
+      
+      trigger(target, key)
+      
+      return true
+    }
+  })
 }
+
+function cleanup(effectFn: EffectFn) {
+  effectFn.deps.forEach((dep: Set<Func>) => {
+    dep.delete(effectFn)
+  })
+  effectFn.deps.length = 0
+}
+type EffectFn = {
+  (): void
+  deps: Set<Func>[]
+}
+function effect(fn: Func) {
+  const effectFn: EffectFn = () => {
+    activeEffect = effectFn
+    cleanup(effectFn)
+    fn()
+  }
+  effectFn.deps = []
+  effectFn()
+}
+
+// call
+const data = {
+  foo: true,
+  bar: true,
+}
+const obj: any = observe(data)
+let temp1, temp2
 function greet() {
   console.log('greet')
   const root = document.querySelector('#app') as HTMLElement
   if (root) {
-    root.innerText = obj.text
+    root.innerText = obj.ok ? obj.text : 'not'
   }
 }
 function init() {
-  createButton('text: vue3', () => {
-    obj.text = 'hello vue3'
+  createButton('foo: any', () => {
+    obj.foo = 'xixi'
   })
-  createButton('noExist: xixi', () => {
-    obj.noExist = 'xixi'
+  createButton('bar: any', () => {
+    obj.bar = 'haha'
   })
 
-  effect(greet)
+  effect(function effectFn1() {
+    console.log('effectFn1 执行')
+
+    effect(function effectFn2() {
+      console.log('effectFn2 执行')
+      temp2 = obj.bar
+    })
+
+    temp1 = obj.foo
+  })
 }
 function createButton(info: string, handler: Func) {
   const button = document.createElement('button')
