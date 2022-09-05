@@ -2,10 +2,10 @@
 type Func = (...args: any[]) => any
 
 const bucket = new WeakMap<object, any>()
-let activeEffect: any
+let activeEffect: any[] = []
 
 function track<O extends object>(target: O, key: keyof O) {
-  if (!activeEffect) return
+  if (activeEffect.length === 0) return
   if (!bucket.get(target)) {
     const m = new Map()
     bucket.set(target, m)
@@ -15,16 +15,28 @@ function track<O extends object>(target: O, key: keyof O) {
     bucket.get(target).set(key, s)
   }
   const dep = bucket.get(target).get(key)
-  dep.add(activeEffect)
-  activeEffect.deps.push(dep)
+  dep.add(activeEffect[0])
+  activeEffect[0].deps.push(dep)
 }
 function trigger<O extends object>(target: O, key: keyof O) {
   const m = bucket.get(target)
   if (!m) return
-  const s = m.get(key) as Set<Func>
+  const s = m.get(key) as Set<EffectFn>
   if (!s) return
-  const newDep = new Set(s)
-  newDep.forEach((fn) => fn())
+  const newDep = new Set<EffectFn>()
+  s.forEach(fn => {
+    if (fn !== activeEffect[0]) {
+      newDep.add(fn)
+    }
+  })
+  newDep.forEach((fn) => {
+    const scheduler = fn.options?.scheduler
+    if (scheduler) {
+      scheduler(fn)
+    } else {
+      fn()
+    }
+  })
 }
 
 function observe(data: object) {
@@ -50,24 +62,29 @@ function cleanup(effectFn: EffectFn) {
   })
   effectFn.deps.length = 0
 }
+type EffectFnOptions = {
+  scheduler?: (effectFn: EffectFn) => void
+}
 type EffectFn = {
   (): void
   deps: Set<Func>[]
+  options?: EffectFnOptions
 }
-function effect(fn: Func) {
+function effect(fn: Func, options?: EffectFnOptions) {
   const effectFn: EffectFn = () => {
-    activeEffect = effectFn
+    activeEffect.unshift(effectFn)
     cleanup(effectFn)
     fn()
+    activeEffect.shift()
   }
+  effectFn.options = options
   effectFn.deps = []
   effectFn()
 }
 
 // call
 const data = {
-  foo: true,
-  bar: true,
+  foo: 0,
 }
 const obj: any = observe(data)
 let temp1, temp2
@@ -78,6 +95,18 @@ function greet() {
     root.innerText = obj.ok ? obj.text : 'not'
   }
 }
+let jobQueue = new Set<EffectFn>()
+let isFlushing: boolean = false
+function flushJob() {
+  if (isFlushing) return
+
+  isFlushing = true
+  Promise
+  .resolve()
+  .then(() => {
+    jobQueue.forEach(fn => fn())
+  })
+}
 function init() {
   createButton('foo: any', () => {
     obj.foo = 'xixi'
@@ -86,16 +115,21 @@ function init() {
     obj.bar = 'haha'
   })
 
-  effect(function effectFn1() {
-    console.log('effectFn1 执行')
-
-    effect(function effectFn2() {
-      console.log('effectFn2 执行')
-      temp2 = obj.bar
-    })
-
-    temp1 = obj.foo
+  effect(() => {
+    console.log(obj.foo)
+  }, {
+    scheduler(fn) {
+      jobQueue.add(fn)
+      flushJob()
+    }
   })
+  obj.foo++
+  obj.foo++
+  obj.foo++
+  obj.foo++
+  obj.foo++
+  obj.foo++
+  // console.log('end')
 }
 function createButton(info: string, handler: Func) {
   const button = document.createElement('button')

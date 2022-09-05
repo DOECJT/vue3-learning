@@ -1,8 +1,8 @@
 "use strict";
 const bucket = new WeakMap();
-let activeEffect;
+let activeEffect = [];
 function track(target, key) {
-    if (!activeEffect)
+    if (activeEffect.length === 0)
         return;
     if (!bucket.get(target)) {
         const m = new Map();
@@ -13,8 +13,8 @@ function track(target, key) {
         bucket.get(target).set(key, s);
     }
     const dep = bucket.get(target).get(key);
-    dep.add(activeEffect);
-    activeEffect.deps.push(dep);
+    dep.add(activeEffect[0]);
+    activeEffect[0].deps.push(dep);
 }
 function trigger(target, key) {
     const m = bucket.get(target);
@@ -23,8 +23,22 @@ function trigger(target, key) {
     const s = m.get(key);
     if (!s)
         return;
-    const newDep = new Set(s);
-    newDep.forEach((fn) => fn());
+    const newDep = new Set();
+    s.forEach(fn => {
+        if (fn !== activeEffect[0]) {
+            newDep.add(fn);
+        }
+    });
+    newDep.forEach((fn) => {
+        var _a;
+        const scheduler = (_a = fn.options) === null || _a === void 0 ? void 0 : _a.scheduler;
+        if (scheduler) {
+            scheduler(fn);
+        }
+        else {
+            fn();
+        }
+    });
 }
 function observe(data) {
     return new Proxy(data, {
@@ -45,19 +59,20 @@ function cleanup(effectFn) {
     });
     effectFn.deps.length = 0;
 }
-function effect(fn) {
+function effect(fn, options) {
     const effectFn = () => {
-        activeEffect = effectFn;
+        activeEffect.unshift(effectFn);
         cleanup(effectFn);
         fn();
+        activeEffect.shift();
     };
+    effectFn.options = options;
     effectFn.deps = [];
     effectFn();
 }
 // call
 const data = {
-    foo: true,
-    bar: true,
+    foo: 0,
 };
 const obj = observe(data);
 let temp1, temp2;
@@ -68,6 +83,18 @@ function greet() {
         root.innerText = obj.ok ? obj.text : 'not';
     }
 }
+let jobQueue = new Set();
+let isFlushing = false;
+function flushJob() {
+    if (isFlushing)
+        return;
+    isFlushing = true;
+    Promise
+        .resolve()
+        .then(() => {
+        jobQueue.forEach(fn => fn());
+    });
+}
 function init() {
     createButton('foo: any', () => {
         obj.foo = 'xixi';
@@ -75,14 +102,21 @@ function init() {
     createButton('bar: any', () => {
         obj.bar = 'haha';
     });
-    effect(function effectFn1() {
-        console.log('effectFn1 执行');
-        effect(function effectFn2() {
-            console.log('effectFn2 执行');
-            temp2 = obj.bar;
-        });
-        temp1 = obj.foo;
+    effect(() => {
+        console.log(obj.foo);
+    }, {
+        scheduler(fn) {
+            jobQueue.add(fn);
+            flushJob();
+        }
     });
+    obj.foo++;
+    obj.foo++;
+    obj.foo++;
+    obj.foo++;
+    obj.foo++;
+    obj.foo++;
+    // console.log('end')
 }
 function createButton(info, handler) {
     const button = document.createElement('button');
