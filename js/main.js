@@ -2,6 +2,7 @@
 const bucket = new WeakMap();
 let activeEffect = [];
 function track(target, key) {
+    console.log('track');
     if (activeEffect.length === 0)
         return;
     if (!bucket.get(target)) {
@@ -17,6 +18,7 @@ function track(target, key) {
     activeEffect[0].deps.push(dep);
 }
 function trigger(target, key) {
+    console.log('trigger');
     const m = bucket.get(target);
     if (!m)
         return;
@@ -60,19 +62,46 @@ function cleanup(effectFn) {
     effectFn.deps.length = 0;
 }
 function effect(fn, options) {
+    var _a;
     const effectFn = () => {
         activeEffect.unshift(effectFn);
         cleanup(effectFn);
-        fn();
+        const ret = fn();
         activeEffect.shift();
+        return ret;
     };
     effectFn.options = options;
     effectFn.deps = [];
-    effectFn();
+    if (!((_a = effectFn.options) === null || _a === void 0 ? void 0 : _a.lazy)) {
+        effectFn();
+    }
+    return effectFn;
+}
+function computed(getter) {
+    let value;
+    let dirty = true;
+    const effectFn = effect(getter, {
+        lazy: true,
+        scheduler() {
+            dirty = true;
+            trigger(obj, 'value');
+        }
+    });
+    return {
+        get value() {
+            if (dirty) {
+                value = effectFn();
+                dirty = false;
+            }
+            track(obj, 'value');
+            return value;
+        }
+    };
 }
 // call
 const data = {
-    foo: 0,
+    firstName: 'jack',
+    lastName: 'johns'
 };
 const obj = observe(data);
 let temp1, temp2;
@@ -95,29 +124,6 @@ function flushJob() {
         jobQueue.forEach(fn => fn());
     });
 }
-function init() {
-    createButton('foo: any', () => {
-        obj.foo = 'xixi';
-    });
-    createButton('bar: any', () => {
-        obj.bar = 'haha';
-    });
-    effect(() => {
-        console.log(obj.foo);
-    }, {
-        scheduler(fn) {
-            jobQueue.add(fn);
-            flushJob();
-        }
-    });
-    obj.foo++;
-    obj.foo++;
-    obj.foo++;
-    obj.foo++;
-    obj.foo++;
-    obj.foo++;
-    // console.log('end')
-}
 function createButton(info, handler) {
     const button = document.createElement('button');
     button.innerText = info;
@@ -127,4 +133,22 @@ function createButton(info, handler) {
         container.appendChild(button);
     }
 }
+function init() {
+}
+// run
 init();
+const fullName = computed(() => {
+    return `${obj.firstName} ${obj.lastName}`;
+});
+function printFullName() {
+    console.log('value', fullName.value);
+}
+createButton('print full name', () => {
+    printFullName();
+});
+createButton('change firstName', () => {
+    obj.firstName = 'tom';
+});
+effect(() => {
+    console.log('fullName', fullName.value);
+});

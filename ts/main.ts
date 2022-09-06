@@ -5,6 +5,7 @@ const bucket = new WeakMap<object, any>()
 let activeEffect: any[] = []
 
 function track<O extends object>(target: O, key: keyof O) {
+  console.log('track')
   if (activeEffect.length === 0) return
   if (!bucket.get(target)) {
     const m = new Map()
@@ -19,6 +20,7 @@ function track<O extends object>(target: O, key: keyof O) {
   activeEffect[0].deps.push(dep)
 }
 function trigger<O extends object>(target: O, key: keyof O) {
+  console.log('trigger')
   const m = bucket.get(target)
   if (!m) return
   const s = m.get(key) as Set<EffectFn>
@@ -64,6 +66,7 @@ function cleanup(effectFn: EffectFn) {
 }
 type EffectFnOptions = {
   scheduler?: (effectFn: EffectFn) => void
+  lazy?: boolean
 }
 type EffectFn = {
   (): void
@@ -74,17 +77,43 @@ function effect(fn: Func, options?: EffectFnOptions) {
   const effectFn: EffectFn = () => {
     activeEffect.unshift(effectFn)
     cleanup(effectFn)
-    fn()
+    const ret = fn()
     activeEffect.shift()
+    return ret
   }
   effectFn.options = options
   effectFn.deps = []
-  effectFn()
+  if (!effectFn.options?.lazy) {
+    effectFn()
+  }
+  return effectFn
+}
+function computed(getter: Func) {
+  let value: any
+  let dirty: boolean = true
+  const effectFn = effect(getter, {
+    lazy: true,
+    scheduler() {
+      dirty = true
+      trigger(obj, 'value')
+    }
+  })
+  return {
+    get value() {
+      if (dirty) {
+        value = effectFn()
+        dirty = false
+      }
+      track(obj, 'value')
+      return value
+    }
+  }
 }
 
 // call
 const data = {
-  foo: 0,
+  firstName: 'jack',
+  lastName: 'johns'
 }
 const obj: any = observe(data)
 let temp1, temp2
@@ -107,30 +136,6 @@ function flushJob() {
     jobQueue.forEach(fn => fn())
   })
 }
-function init() {
-  createButton('foo: any', () => {
-    obj.foo = 'xixi'
-  })
-  createButton('bar: any', () => {
-    obj.bar = 'haha'
-  })
-
-  effect(() => {
-    console.log(obj.foo)
-  }, {
-    scheduler(fn) {
-      jobQueue.add(fn)
-      flushJob()
-    }
-  })
-  obj.foo++
-  obj.foo++
-  obj.foo++
-  obj.foo++
-  obj.foo++
-  obj.foo++
-  // console.log('end')
-}
 function createButton(info: string, handler: Func) {
   const button = document.createElement('button')
   button.innerText = info
@@ -140,4 +145,23 @@ function createButton(info: string, handler: Func) {
     container.appendChild(button)
   }
 }
+function init() {
+}
+
+// run
 init()
+const fullName = computed(() => {
+  return `${obj.firstName} ${obj.lastName}`
+})
+function printFullName() {
+  console.log('value', fullName.value)
+}
+createButton('print full name', () => {
+  printFullName()
+})
+createButton('change firstName', () => {
+  obj.firstName = 'tom'
+})
+effect(() => {
+  console.log('fullName', fullName.value)
+})
