@@ -98,7 +98,7 @@ function computed(getter: Func) {
       trigger(obj, 'value')
     }
   })
-  return {
+  const obj = {
     get value() {
       if (dirty) {
         value = effectFn()
@@ -107,6 +107,53 @@ function computed(getter: Func) {
       track(obj, 'value')
       return value
     }
+  }
+  return obj
+}
+
+// watch
+function traverse(source: Record<keyof any, any>, seen = new Set()) {
+  if (typeof source !== 'object' || source === null || seen.has(source)) return
+
+  Object.keys(source).forEach((key) => {
+    traverse(source[key], seen)
+  })
+
+  return source
+}
+type WatchCallback = (newValue?: any, oldValue?: any) => any
+type WatchOptions = {
+  immediate?: boolean
+}
+function watch(
+  source: Record<keyof any, any> | Func,
+  cb: WatchCallback,
+  options?: WatchOptions
+) {
+  let getter: Function
+  let newValue: any
+  let oldValue: any
+
+  if (typeof source === 'function') {
+    getter = source
+  } else {
+    getter = () => traverse(source)
+  }
+
+  const job = () => {
+    newValue = effectFn()
+    cb(newValue, oldValue)
+    oldValue = newValue
+  }
+  const effectFn = effect(() => getter(), {
+    lazy: true,
+    scheduler: job
+  })
+
+  if (options?.immediate) {
+    job()
+  } else {
+    oldValue = effectFn()
   }
 }
 
@@ -162,6 +209,21 @@ createButton('print full name', () => {
 createButton('change firstName', () => {
   obj.firstName = 'tom'
 })
+createButton('change lastName', () => {
+  obj.lastName = 'test'
+})
 effect(() => {
-  console.log('fullName', fullName.value)
+  let el = document.createElement('h3')
+  el.innerText = fullName.value
+  const container = document.querySelector('#app')
+  container?.appendChild(el)
+  // console.log('fullName', fullName.value)
+})
+watch(() => {
+  return obj.firstName
+}, (newValue, oldValue) => {
+  console.log(`newValue: ${newValue}`)
+  console.log(`oldValue: ${oldValue}`)
+}, {
+  immediate: true
 })

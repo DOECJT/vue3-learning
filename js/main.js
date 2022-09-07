@@ -87,7 +87,7 @@ function computed(getter) {
             trigger(obj, 'value');
         }
     });
-    return {
+    const obj = {
         get value() {
             if (dirty) {
                 value = effectFn();
@@ -97,6 +97,42 @@ function computed(getter) {
             return value;
         }
     };
+    return obj;
+}
+// watch
+function traverse(source, seen = new Set()) {
+    if (typeof source !== 'object' || source === null || seen.has(source))
+        return;
+    Object.keys(source).forEach((key) => {
+        traverse(source[key], seen);
+    });
+    return source;
+}
+function watch(source, cb, options) {
+    let getter;
+    let newValue;
+    let oldValue;
+    if (typeof source === 'function') {
+        getter = source;
+    }
+    else {
+        getter = () => traverse(source);
+    }
+    const job = () => {
+        newValue = effectFn();
+        cb(newValue, oldValue);
+        oldValue = newValue;
+    };
+    const effectFn = effect(() => getter(), {
+        lazy: true,
+        scheduler: job
+    });
+    if (options === null || options === void 0 ? void 0 : options.immediate) {
+        job();
+    }
+    else {
+        oldValue = effectFn();
+    }
 }
 // call
 const data = {
@@ -149,6 +185,21 @@ createButton('print full name', () => {
 createButton('change firstName', () => {
     obj.firstName = 'tom';
 });
+createButton('change lastName', () => {
+    obj.lastName = 'test';
+});
 effect(() => {
-    console.log('fullName', fullName.value);
+    let el = document.createElement('h3');
+    el.innerText = fullName.value;
+    const container = document.querySelector('#app');
+    container === null || container === void 0 ? void 0 : container.appendChild(el);
+    // console.log('fullName', fullName.value)
+});
+watch(() => {
+    return obj.firstName;
+}, (newValue, oldValue) => {
+    console.log(`newValue: ${newValue}`);
+    console.log(`oldValue: ${oldValue}`);
+}, {
+    immediate: true
 });
