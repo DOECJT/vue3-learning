@@ -121,7 +121,7 @@ function traverse(source: Record<keyof any, any>, seen = new Set()) {
 
   return source
 }
-type WatchCallback = (newValue?: any, oldValue?: any) => any
+type WatchCallback = (newValue: any, oldValue: any, onCleanup: (cleanup: Func) => any) => any
 type WatchOptions = {
   immediate?: boolean
 }
@@ -140,14 +140,27 @@ function watch(
     getter = () => traverse(source)
   }
 
+  let cleanup: Func
+  const onCleanup = (fn: Func) => {
+    cleanup = fn
+  }
+
   const job = () => {
     newValue = effectFn()
-    cb(newValue, oldValue)
+    // if (typeof cleanup === 'function') {
+    //   cleanup()
+    // }
+    cb(newValue, oldValue, onCleanup)
     oldValue = newValue
   }
   const effectFn = effect(() => getter(), {
     lazy: true,
-    scheduler: job
+    scheduler: () => {
+      if (typeof cleanup === 'function') {
+        cleanup()
+      }
+      job()
+    }
   })
 
   if (options?.immediate) {
@@ -160,7 +173,9 @@ function watch(
 // call
 const data = {
   firstName: 'jack',
-  lastName: 'johns'
+  lastName: 'johns',
+  request: '0',
+  result: '0'
 }
 const obj: any = observe(data)
 let temp1, temp2
@@ -192,38 +207,56 @@ function createButton(info: string, handler: Func) {
     container.appendChild(button)
   }
 }
-function init() {
-}
 
-// run
-init()
 const fullName = computed(() => {
   return `${obj.firstName} ${obj.lastName}`
 })
 function printFullName() {
   console.log('value', fullName.value)
 }
-createButton('print full name', () => {
-  printFullName()
+createButton('A request', () => {
+  obj.request = 'a'
 })
-createButton('change firstName', () => {
-  obj.firstName = 'tom'
-})
-createButton('change lastName', () => {
-  obj.lastName = 'test'
+createButton('B request', () => {
+  obj.request = 'b'
 })
 effect(() => {
-  let el = document.createElement('h3')
-  el.innerText = fullName.value
+  // let el = document.createElement('h3')
+  // el.innerText = fullName.value
   const container = document.querySelector('#app')
-  container?.appendChild(el)
+  if (container) {
+    container.textContent = `request: ${obj.request}, result: ${obj.result}`
+  }
   // console.log('fullName', fullName.value)
 })
+
+const wait = (timeout: number, content: any) => new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve(content)
+  }, timeout)
+})
+
 watch(() => {
-  return obj.firstName
-}, (newValue, oldValue) => {
-  console.log(`newValue: ${newValue}`)
-  console.log(`oldValue: ${oldValue}`)
+  return obj.request
+}, async (newValue, oldValue, onCleanup) => {
+  // console.log(`newValue: ${newValue}`)
+  // console.log(`oldValue: ${oldValue}`)
+  let expired = false
+
+  onCleanup(() => {
+    expired = true
+  })
+  
+  let data: any
+  if (newValue === 'a') {
+    data = await wait(1000, 'a result')
+  } else if (newValue) {
+    data = await wait(100, 'b result')
+  }
+
+  if (!expired) {
+    obj.result = data
+  }
 }, {
-  immediate: true
+  // immediate: true
 })
