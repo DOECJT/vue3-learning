@@ -19,9 +19,15 @@ const p = new Proxy(data, {
   deleteProperty(target, key) {
     console.log(`delete: ${key}`)
     return Reflect.deleteProperty(target, key)
+  },
+  has(target, key) {
+    console.log('has')
+    return Reflect.has(target, key)
+  },
+  ownKeys(target) {
+    console.log('ownKeys')
+    return Reflect.ownKeys(target)
   }
 })
 
-console.log('foo', p.foo)
-delete p.foo
-console.log('foo', p.foo)
+console.log('foo' in p)
