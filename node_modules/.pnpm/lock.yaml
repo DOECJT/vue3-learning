@@ -1,0 +1,23 @@
+lockfileVersion: 5.4
+
+specifiers:
+  '@vue/reactivity': ^3.2.40
+
+dependencies:
+  '@vue/reactivity': registry.npmmirror.com/@vue/reactivity/3.2.40
+
+packages:
+
+  registry.npmmirror.com/@vue/reactivity/3.2.40:
+    resolution: {integrity: sha512-N9qgGLlZmtUBMHF9xDT4EkD9RdXde1Xbveb+niWMXuHVWQP5BzgRmE3SFyUBBcyayG4y1lhoz+lphGRRxxK4RA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@vue/reactivity/-/reactivity-3.2.40.tgz}
+    name: '@vue/reactivity'
+    version: 3.2.40
+    dependencies:
+      '@vue/shared': registry.npmmirror.com/@vue/shared/3.2.40
+    dev: false
+
+  registry.npmmirror.com/@vue/shared/3.2.40:
+    resolution: {integrity: sha512-0PLQ6RUtZM0vO3teRfzGi4ltLUO5aO+kLgwh4Um3THSR03rpQWLTuRCkuO5A41ITzwdWeKdPHtSARuPkoo5pCQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@vue/shared/-/shared-3.2.40.tgz}
+    name: '@vue/shared'
+    version: 3.2.40
+    dev: false

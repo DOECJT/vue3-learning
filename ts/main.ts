@@ -31,3 +31,7 @@ const p = new Proxy(data, {
 })
 
 console.log('foo' in p)
+
+const obj = {}
+const arr = [obj]
+console.log(arr.includes(obj))
