@@ -6,15 +6,12 @@ const container = document.querySelector('#app')
 // handle data
 const data = reactive({
   isShow: true,
-  greet: 'Hello world!'
+  greet: 'Hello world!',
+  count: 0,
 })
 const run = async () => {
   await timeout(1000)
-  data.isShow = false
-  await timeout(1000)
-  data.greet = 'Hello, vue!'
-  await timeout(1000)
-  data.isShow = true
+  data.count++
 }
 run()
 
@@ -22,7 +19,7 @@ run()
 function greet() {
   console.log('greet')
   const el = document.createElement('h3')
-  el.innerHTML = data.isShow ? data.greet : 'xixi'
+  el.innerHTML = data.isShow ? `${data.count++}` : 'xixi'
 
   if (container) {
     container.innerHTML = ''
