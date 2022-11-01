@@ -2,7 +2,8 @@ import type { Func } from '../base'
 
 type R = Record<PropertyKey, any>
 type EffectFnOptions = {
-  scheduler?: (effectFn: EffectFn) => any
+  scheduler?: (effectFn?: EffectFn) => any
+  lazy?: boolean
 }
 type EffectFn = {
   (...args: any[]): any
@@ -15,7 +16,7 @@ type List = Set<EffectFn>
 const bucket = new WeakMap<Record<PropertyKey, any>, Store>()
 let effectFnStack: EffectFn[] = []
 
-function track(target: R, key: PropertyKey) {
+export function track(target: R, key: PropertyKey) {
   if (!effectFnStack[effectFnStack.length - 1]) return
   
   let store = bucket.get(target)
@@ -32,7 +33,7 @@ function track(target: R, key: PropertyKey) {
   effectFnStack[effectFnStack.length - 1].deps.push(list)
 }
 
-function trigger(target: R, key: PropertyKey) {
+export function trigger(target: R, key: PropertyKey) {
   const store = bucket.get(target)
   if (!store) return
   const list = store.get(key)
@@ -45,7 +46,11 @@ function trigger(target: R, key: PropertyKey) {
   runList.forEach(effectFn => {
     if (effectFn === effectFnStack[effectFnStack.length - 1]) return
     const scheduler = effectFn.options?.scheduler
-    scheduler && scheduler(effectFn)
+    if (scheduler) {
+      scheduler(effectFn)
+    } else {
+      effectFn()
+    }
   })
 }
 
@@ -77,11 +82,16 @@ export function effect(fn: Func, options?: EffectFnOptions) {
     cleanup(effectFn)
     
     effectFnStack.push(effectFn)
-    fn()
+    const ret = fn()
     effectFnStack.pop()
+    return ret
   }
   effectFn.deps = []
-  effectFn.options = options
+  options && (effectFn.options = options)
 
-  effectFn()
+  if (!options?.lazy) {
+    effectFn()
+  }
+
+  return effectFn
 }
