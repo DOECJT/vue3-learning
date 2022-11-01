@@ -1,16 +1,16 @@
 import { reactive, effect } from './reactive/index.js'
 import computed from './reactive/computed.js'
+import watch from './reactive/watch.js'
 import { timeout } from './utils.js'
 
 const container = document.querySelector('#app')
 
 // handle data
 const data = reactive({
-  firstName: 'jack',
-  lastName: 'johns'
+  count: 0
 })
-const fullName = computed(() => {
-  return `${data.firstName} ${data.lastName}`
+watch(() => data.count, () => {
+  console.log('count changed')
 })
 const run = async () => {
   await timeout(0)
