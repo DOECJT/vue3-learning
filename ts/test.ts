@@ -5,13 +5,12 @@ const container = document.querySelector('#app')
 
 // handle data
 const data = reactive({
-  isShow: true,
-  greet: 'Hello world!',
-  count: 0,
+  count: 0
 })
 const run = async () => {
-  await timeout(1000)
+  await timeout(0)
   data.count++
+  console.log('finished')
 }
 run()
 
@@ -26,6 +25,14 @@ function greet() {
     container.appendChild(el)
   }
 }
-effect(greet)
+effect(() => {
+  console.log(data.count)
+}, {
+  scheduler: (effectFn) => {
+    setTimeout(() => {
+      effectFn()
+    }, 0)
+  }
+})
 
 export {}

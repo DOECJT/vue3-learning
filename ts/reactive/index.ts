@@ -1,9 +1,13 @@
 import type { Func } from '../base'
 
 type R = Record<PropertyKey, any>
+type EffectFnOptions = {
+  scheduler?: (effectFn: EffectFn) => any
+}
 type EffectFn = {
   (...args: any[]): any
   deps: Array<List>
+  options?: EffectFnOptions
 }
 type Store = Map<PropertyKey, List>
 type List = Set<EffectFn>
@@ -40,7 +44,8 @@ function trigger(target: R, key: PropertyKey) {
   })
   runList.forEach(effectFn => {
     if (effectFn === effectFnStack[effectFnStack.length - 1]) return
-    effectFn()
+    const scheduler = effectFn.options?.scheduler
+    scheduler && scheduler(effectFn)
   })
 }
 
@@ -67,7 +72,7 @@ function cleanup(effectFn: EffectFn) {
     dep.delete(effectFn)
   })
 }
-export function effect(fn: Func) {
+export function effect(fn: Func, options?: EffectFnOptions) {
   const effectFn: EffectFn = () => {
     cleanup(effectFn)
     
@@ -76,6 +81,7 @@ export function effect(fn: Func) {
     effectFnStack.pop()
   }
   effectFn.deps = []
+  effectFn.options = options
 
   effectFn()
 }
