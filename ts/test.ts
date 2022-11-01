@@ -23,7 +23,7 @@ run()
 function greet() {
   console.log('greet')
   const el = document.createElement('h3')
-  el.innerHTML = fullName.value
+  el.innerHTML = data.count
 
   if (container) {
     container.innerHTML = ''
@@ -31,6 +31,6 @@ function greet() {
   }
 }
 
-effect(greet)
+// effect(greet)
 
 export {}
