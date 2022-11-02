@@ -14,7 +14,11 @@ function traverse(value: any, seen = new Set()) {
   }
 }
 
-export default function watch(source: any, callback: Func) {
+type WatchOptions = {
+  immediate?: boolean
+  flush?: 'pre' | 'post'
+}
+export default function watch(source: any, callback: Func, options?: WatchOptions) {
   const getter = typeof source === 'function'
     ? source
     : () => traverse(source)
@@ -22,19 +26,39 @@ export default function watch(source: any, callback: Func) {
   let value: any
   let oldValue: any
   
+  let cleanup: Func
+  const onCleanup = (cleanupFn: Func) => {
+    cleanup = cleanupFn
+  }
+
+  const job = () => {
+    value = effectFn()
+    if (typeof cleanup === 'function') {
+      cleanup()
+    }
+    callback(value, oldValue, onCleanup)
+    oldValue = value
+  }
+
   const effectFn = effect(
     () => getter(),
     {
       scheduler: () => {
-        value = effectFn()
-        
-        callback(value, oldValue)
-
-        oldValue = value
+        if (options?.flush === 'post') {
+          Promise.resolve().then(() => {
+            job()
+          })
+        } else {
+          job()
+        }
       },
       lazy: true
     }
   )
 
-  oldValue = effectFn()
+  if (options?.immediate) {
+    job()
+  } else {
+    oldValue = effectFn()
+  }
 }

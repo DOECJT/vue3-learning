@@ -7,22 +7,26 @@ const container = document.querySelector('#app')
 
 // handle data
 const data = reactive({
-  a: 1,
-  b: 2,
+  time: 1000,
+  data: '',
 })
 watch(
-  () => data.a + data.b,
-  (value, oldValue) => {
-    console.log('changed')
-    console.log('value', value)
-    console.log('oldValue', oldValue)
-  }
+  () => data.time,
+  async (value, oldValue, onCleanup) => {
+    let expired = false
+    onCleanup(() => {
+      expired = true
+    })
+    const res = await getData(value)
+    if (!expired) {
+      data.data = res
+    }
+  },
 )
 const run = async () => {
   await timeout(0)
 
-  data.a = 2
-  data.b = 3
+  data.time = 2000
 }
 run()
 
@@ -30,7 +34,7 @@ run()
 function greet() {
   console.log('greet')
   const el = document.createElement('h3')
-  el.innerHTML = ''
+  el.innerHTML = data.data
 
   if (container) {
     container.innerHTML = ''
@@ -38,6 +42,11 @@ function greet() {
   }
 }
 
-// effect(greet)
+effect(greet)
+
+async function getData(time: number) {
+  await timeout(time)
+  return time
+}
 
 export {}
