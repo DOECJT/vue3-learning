@@ -13,7 +13,7 @@ type EffectFn = {
 type Store = Map<PropertyKey, List>
 type List = Set<EffectFn>
 
-const bucket = new WeakMap<Record<PropertyKey, any>, Store>()
+export const bucket = new WeakMap<Record<PropertyKey, any>, Store>()
 let effectFnStack: EffectFn[] = []
 
 export function track(target: R, key: PropertyKey) {
@@ -62,10 +62,10 @@ export function reactive(data: Record<PropertyKey, any>) {
   }
   
   return new Proxy(data, {
-    get: (target, key) => {
+    get: (target, key, receiver) => {
       track(target, key)
       
-      return Reflect.get(target, key)
+      return Reflect.get(target, key, receiver)
     },
     set: (target, key, value) => {
       const ret = Reflect.set(target, key, value)
