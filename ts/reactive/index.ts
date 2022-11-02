@@ -55,6 +55,12 @@ export function trigger(target: R, key: PropertyKey) {
 }
 
 export function reactive(data: Record<PropertyKey, any>) {
+  for (const key in data) {
+    if (typeof data[key] === 'object' && data[key] !== null) {
+      data[key] = reactive(data[key])
+    }
+  }
+  
   return new Proxy(data, {
     get: (target, key) => {
       track(target, key)

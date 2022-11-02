@@ -7,15 +7,22 @@ const container = document.querySelector('#app')
 
 // handle data
 const data = reactive({
-  count: 0
+  a: 1,
+  b: 2,
 })
-watch(() => data.count, () => {
-  console.log('count changed')
-})
+watch(
+  () => data.a + data.b,
+  (value, oldValue) => {
+    console.log('changed')
+    console.log('value', value)
+    console.log('oldValue', oldValue)
+  }
+)
 const run = async () => {
   await timeout(0)
 
-  data.lastName = `${data.lastName}1`
+  data.a = 2
+  data.b = 3
 }
 run()
 
@@ -23,7 +30,7 @@ run()
 function greet() {
   console.log('greet')
   const el = document.createElement('h3')
-  el.innerHTML = data.count
+  el.innerHTML = ''
 
   if (container) {
     container.innerHTML = ''
