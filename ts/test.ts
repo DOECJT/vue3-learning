@@ -2,7 +2,8 @@ import { reactive, effect, bucket } from './reactive/index.js'
 import computed from './reactive/computed.js'
 import watch from './reactive/watch.js'
 import { timeout } from './utils.js'
-import { createRenderer, type Vnode, type Container, type rendererOptions } from './render/index.js'
+import { createRenderer, type Vnode, type Container, type rendererOptions, shouldSetAsProps } from './render/index.js'
+import render from './render/render.js'
 
 const container = document.querySelector('#app')
 
@@ -21,27 +22,42 @@ const postRendering = async () => {
 }
 run()
 
-// render
-const browserOptions = {
-  createElement(tag: string) {
-    return document.createElement(tag)
-  },
-  setElementText(el: HTMLElement, text: string) {
-    el.innerText = text
-  },
-  insert(el: HTMLElement, parent: HTMLElement, anchor: HTMLElement | null = null) {
-    parent.insertBefore(el, anchor)
-  },
-}
-const renderer = createRenderer(browserOptions)
-
 const vnode: Vnode = {
-  type: 'h3',
-  children: data.greet
+  type: 'div',
+  props: {
+    id: 'foo',
+  },
+  children: [
+    {
+      type: 'h3',
+      props: {
+        class: 'dark',
+        style: 'color: #1578ff;'
+      },
+      children: 'Hello world!'
+    },
+    {
+      type: 'button',
+      props: {
+        onClick: [
+          () => {
+            console.log('click 1')
+          },
+          () => {
+            console.log('click 2')
+          }
+        ],
+        onmouseenter: () => {
+          console.log('mouseenter')
+        }
+      },
+      children: 'click'
+    }
+  ]
 }
 
 effect(() => {
-  renderer.render(vnode, document.querySelector('#app') as Container)
+  render(vnode, document.querySelector('#app') as Container)
 })
 
 export {}
