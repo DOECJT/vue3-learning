@@ -1,4 +1,5 @@
 import { createRenderer, shouldSetAsProps } from './index.js'
+import type { Func } from '../base.js'
 
 // render
 const browserOptions = {
@@ -20,7 +21,7 @@ const browserOptions = {
         if (!invoker) {
           invoker = el._vei[type] = (e: Event) => {
             if (Array.isArray(invoker.value)) {
-              invoker.value.forEach(fn => fn(e))
+              invoker.value.forEach((fn: Func) => fn(e))
             } else {
               invoker.value(e)
             }

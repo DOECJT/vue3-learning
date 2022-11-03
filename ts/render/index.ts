@@ -52,8 +52,44 @@ export function createRenderer(options: rendererOptions) {
     insert(el, container)
   }
 
+  function patchChildren(oldVnode: Vnode, vnode: Vnode, el: HTMLElement) {
+    if (typeof vnode.children === 'string') {
+      if (Array.isArray(oldVnode.children)) {
+        oldVnode.children.forEach(child => unmount(child))
+      } 
+      setElementText(el, vnode.children)
+    } else if (Array.isArray(vnode.children)) {
+      if (Array.isArray(oldVnode.children)) {
+        // diff
+        oldVnode.children.forEach(child => unmount(child))
+        vnode.children.forEach(child => patch(null, child, el as Container))
+      } else {
+        setElementText(el, '')
+        vnode.children.forEach(child => patch(null, child, el as Container))
+      }
+    } else {
+      if (Array.isArray(oldVnode.children)) {
+        oldVnode.children.forEach(child => unmount(child))
+      } else if (typeof oldVnode.children === 'string') {
+        setElementText(el, '')
+      }
+    }
+  }
   function patchElement(oldVnode: Vnode, vnode: Vnode) {
-
+    const el = vnode.el = oldVnode.el as HTMLElement
+    const oldProps = oldVnode.props as Record<string, any>
+    const props = vnode.props as Record<string, any>
+    // update props
+    for (const key in props) {
+      patchProps(el, key, oldProps[key], props[key])
+    }
+    for (const key in oldProps) {
+      if (!(key in props)) {
+        patchProps(el, key, oldProps[key], null)
+      }
+    }
+    // update children
+    patchChildren(oldVnode, vnode, el)
   }
   
   function patch(oldVnode: Vnode | null, vnode: Vnode, container: Container) {

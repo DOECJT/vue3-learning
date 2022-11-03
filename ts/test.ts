@@ -22,41 +22,47 @@ const postRendering = async () => {
 }
 run()
 
-const vnode: Vnode = {
-  type: 'div',
-  props: {
-    id: 'foo',
-  },
-  children: [
-    {
-      type: 'h3',
-      props: {
-        class: 'dark',
-        style: 'color: #1578ff;'
-      },
-      children: 'Hello world!'
+function createVnode() {
+  const vnode: Vnode = {
+    type: 'div',
+    props: {
+      id: 'foo',
     },
-    {
-      type: 'button',
-      props: {
-        onClick: [
-          () => {
-            console.log('click 1')
-          },
-          () => {
-            console.log('click 2')
-          }
-        ],
-        onmouseenter: () => {
-          console.log('mouseenter')
-        }
+    children: [
+      {
+        type: 'h3',
+        props: {
+          class: 'dark',
+          style: 'color: #1578ff;'
+        },
+        children: data.greet
       },
-      children: 'click'
-    }
-  ]
+      {
+        type: 'button',
+        props: {
+          onClick: [
+            () => {
+              console.log('click 1')
+            },
+            () => {
+              console.log('click 2')
+            }
+          ],
+          onmouseenter: () => {
+            console.log('mouseenter')
+          }
+        },
+        children: 'click'
+      }
+    ]
+  }
+
+  return vnode
 }
 
+
 effect(() => {
+  const vnode = createVnode()
   render(vnode, document.querySelector('#app') as Container)
 })
 
