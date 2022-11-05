@@ -1,10 +1,10 @@
-import { createRenderer, shouldSetAsProps } from './index.js'
+import { createRenderer, shouldSetAsProps, type rendererOptions } from './index.js'
 import type { Func } from '../base.js'
 
 // render
-const browserOptions = {
-  createElement(tag: string) {
-    return document.createElement(tag)
+const browserOptions: rendererOptions = {
+  createElement(tag: string | symbol) {
+    return document.createElement(tag as string)
   },
   setElementText(el: HTMLElement, text: string) {
     el.innerText = text
@@ -46,6 +46,15 @@ const browserOptions = {
     } else {
       el.setAttribute(key, value)
     }
+  },
+  createText(text) {
+    return document.createTextNode(text)
+  },
+  createComment(comment) {
+    return document.createComment(comment)
+  },
+  setText(el, text) {
+    el.nodeValue = text
   }
 }
 export default createRenderer(browserOptions).render

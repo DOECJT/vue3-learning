@@ -1,20 +1,27 @@
 import { Func } from '../base.js'
 
 export type Vnode = {
-  type: string
+  type: string | symbol
   props?: Record<PropertyKey, any>
   children: Vnode[] | string
-  el?: HTMLElement
+  el?: HTMLElement | Text | Comment
 }
 export type Container = HTMLElement & {
   _vnode: Vnode
 }
 export type rendererOptions = {
-  createElement: (tag: string) => any
+  createElement: (tag: string | symbol) => any
   setElementText: (el: any, text: string) => void
   insert: (el: any, parent: any, anchor?: any) => void
   patchProps: Func
+  createText: (text: string) => Text
+  createComment: (comment: string) => Comment
+  setText: (el: Text | Comment, text: string) => void
 }
+
+export const Text = Symbol()
+export const Comment = Symbol()
+export const Fragment = Symbol()
 
 export function shouldSetAsProps(el: HTMLElement, key: string) {
   if (el.tagName === 'INPUT' && key === 'form') return false
@@ -27,6 +34,9 @@ export function createRenderer(options: rendererOptions) {
     setElementText,
     insert,
     patchProps,
+    createText,
+    createComment,
+    setText,
   } = options
 
   function mountElement(vnode: Vnode, container: Container) {
@@ -106,14 +116,46 @@ export function createRenderer(options: rendererOptions) {
       } else {
         patchElement(oldVnode, vnode)
       }
+    } else if (type === Text) {
+      if (!oldVnode) {
+        const el = vnode.el = createText(vnode.children as string)
+        insert(el, container)
+      } else {
+        const el = vnode.el = oldVnode.el
+        if (vnode.children !== oldVnode.children) {
+          setText(el as Text, vnode.children as string)
+        }
+      }
+    } else if (type === Comment) {
+      if (!oldVnode) {
+        const el = vnode.el = createComment(vnode.children as string)
+        insert(el, container)
+      } else {
+        const el = vnode.el = oldVnode.el
+        if (vnode.children !== oldVnode.children) {
+          setText(el as Comment, vnode.children as string)
+        }
+      }
+    } else if (type === Fragment) {
+      if (!oldVnode) {
+        (vnode.children as Vnode[]).forEach(child => {
+          patch(null, child, container)
+        })
+      } else {
+        patchChildren(oldVnode, vnode, container)
+      }
     } else if (typeof type === 'object') {
       // component
-    } else if (type === '') {
-      // others
     }
   }
   
   function unmount(vnode: Vnode) {
+    if (vnode.type === Fragment) {
+      (vnode.children as Vnode[]).forEach(child => {
+        unmount(child)
+      })
+      return
+    }
     const el = vnode.el
     const parent = el?.parentNode
     if (parent) {
