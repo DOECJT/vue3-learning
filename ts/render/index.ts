@@ -5,6 +5,7 @@ export type Vnode = {
   props?: Record<PropertyKey, any>
   children: Vnode[] | string
   el?: HTMLElement | Text | Comment
+  key?: any
 }
 export type Container = HTMLElement & {
   _vnode: Vnode
@@ -66,13 +67,31 @@ export function createRenderer(options: rendererOptions) {
     if (typeof vnode.children === 'string') {
       if (Array.isArray(oldVnode.children)) {
         oldVnode.children.forEach(child => unmount(child))
-      } 
+      }
       setElementText(el, vnode.children)
     } else if (Array.isArray(vnode.children)) {
       if (Array.isArray(oldVnode.children)) {
         // diff
-        oldVnode.children.forEach(child => unmount(child))
-        vnode.children.forEach(child => patch(null, child, el as Container))
+        const oldChildren = oldVnode.children
+        const children = vnode.children
+        let lastIndex = 0
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i]
+          for (let j = 0; j < oldChildren.length; j++) {
+            const oldChild = oldChildren[j]
+            if (oldChildren[j].key === children[i].key) {
+              patch(oldChild, child, el as Container)
+              if (j < lastIndex) {
+                console.log('container', el)
+                console.log('item', oldChild.el)
+                insert(oldChild.el, el, null)
+              } else {
+                lastIndex = j
+              }
+            }
+            continue
+          }
+        }
       } else {
         setElementText(el, '')
         vnode.children.forEach(child => patch(null, child, el as Container))
@@ -103,7 +122,7 @@ export function createRenderer(options: rendererOptions) {
   }
   
   function patch(oldVnode: Vnode | null, vnode: Vnode, container: Container) {
-    if (oldVnode && vnode.type === oldVnode.type) {
+    if (oldVnode && vnode.type !== oldVnode.type) {
       unmount(oldVnode)
       oldVnode = null
     }
