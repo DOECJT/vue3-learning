@@ -77,19 +77,25 @@ export function createRenderer(options: rendererOptions) {
         let lastIndex = 0
         for (let i = 0; i < children.length; i++) {
           const child = children[i]
+          let findKey = false
           for (let j = 0; j < oldChildren.length; j++) {
             const oldChild = oldChildren[j]
             if (oldChildren[j].key === children[i].key) {
+              findKey = true
               patch(oldChild, child, el as Container)
               if (j < lastIndex) {
-                insert(oldChild.el, el, null)
+                const prevVNode = children[i - 1]
+                const anchor = prevVNode.el?.nextSibling
+                insert(oldChild.el, el, anchor)
               } else {
                 lastIndex = j
               }
+              break
             }
-            continue
           }
-          patch(null, child, el as Container)
+          // if (!findKey) {
+          //   patch(null, child, el as Container)
+          // }
         }
       } else {
         setElementText(el, '')
