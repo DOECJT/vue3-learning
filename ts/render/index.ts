@@ -82,8 +82,6 @@ export function createRenderer(options: rendererOptions) {
             if (oldChildren[j].key === children[i].key) {
               patch(oldChild, child, el as Container)
               if (j < lastIndex) {
-                console.log('container', el)
-                console.log('item', oldChild.el)
                 insert(oldChild.el, el, null)
               } else {
                 lastIndex = j
@@ -91,6 +89,7 @@ export function createRenderer(options: rendererOptions) {
             }
             continue
           }
+          patch(null, child, el as Container)
         }
       } else {
         setElementText(el, '')

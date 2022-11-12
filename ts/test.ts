@@ -78,20 +78,15 @@ function createVnode() {
     type: Fragment,
     children: data.bol
       ? [
-        { type: 'li', children: 'item 0', key: 0 },
         { type: 'li', children: 'item 1', key: 1 },
         { type: 'li', children: 'item 2', key: 2 },
         { type: 'li', children: 'item 3', key: 3 },
-        { type: 'li', children: 'item 4', key: 4 },
-        { type: 'li', children: 'item 5', key: 5 },
       ]
       : [
         { type: 'li', children: 'item 3', key: 3 },
-        { type: 'li', children: 'item 4', key: 4 },
-        { type: 'li', children: 'item 5', key: 5 },
-        { type: 'li', children: 'item 2', key: 2 },
         { type: 'li', children: 'item 1', key: 1 },
-        { type: 'li', children: 'item 0', key: 0 },
+        { type: 'li', children: 'item 4', key: 4 },
+        { type: 'li', children: 'item 2', key: 2 },
       ]
   }
 
