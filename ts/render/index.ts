@@ -40,7 +40,7 @@ export function createRenderer(options: rendererOptions) {
     setText,
   } = options
 
-  function mountElement(vnode: Vnode, container: Container) {
+  function mountElement(vnode: Vnode, container: Container, anchor: ChildNode | null) {
     // create
     const el = vnode.el = createElement(vnode.type)
     // children
@@ -60,7 +60,7 @@ export function createRenderer(options: rendererOptions) {
       }
     }
     // insert
-    insert(el, container)
+    insert(el, container, anchor)
   }
 
   function patchChildren(oldVnode: Vnode, vnode: Vnode, el: HTMLElement) {
@@ -93,9 +93,16 @@ export function createRenderer(options: rendererOptions) {
               break
             }
           }
-          // if (!findKey) {
-          //   patch(null, child, el as Container)
-          // }
+          if (!findKey) {
+            const prevVNode = children[i - 1]
+            let anchor = null
+            if (prevVNode) {
+              anchor = prevVNode.el?.nextSibling
+            } else {
+              anchor = el.firstChild
+            }
+            patch(null, child, el as Container, anchor)
+          }
         }
       } else {
         setElementText(el, '')
@@ -126,7 +133,7 @@ export function createRenderer(options: rendererOptions) {
     patchChildren(oldVnode, vnode, el)
   }
   
-  function patch(oldVnode: Vnode | null, vnode: Vnode, container: Container) {
+  function patch(oldVnode: Vnode | null, vnode: Vnode, container: Container, anchor: ChildNode | null = null) {
     if (oldVnode && vnode.type !== oldVnode.type) {
       unmount(oldVnode)
       oldVnode = null
@@ -136,7 +143,7 @@ export function createRenderer(options: rendererOptions) {
     if (typeof type === 'string') {
       // tag
       if (!oldVnode) {
-        mountElement(vnode, container)
+        mountElement(vnode, container, anchor)
       } else {
         patchElement(oldVnode, vnode)
       }
