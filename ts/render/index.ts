@@ -104,6 +104,13 @@ export function createRenderer(options: rendererOptions) {
             patch(null, child, el as Container, anchor)
           }
         }
+        for (let i = 0; i < oldChildren.length; i++) {
+          const oldChild = oldChildren[i]
+          const hasKey = children.find(vnode => vnode.key === oldChild.key)
+          if (!hasKey) {
+            unmount(oldChild)
+          }
+        }
       } else {
         setElementText(el, '')
         vnode.children.forEach(child => patch(null, child, el as Container))

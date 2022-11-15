@@ -18,7 +18,7 @@ const container = document.querySelector('#app')
 
 // handle data
 const data = reactive({
-  bol: true
+  bol: false
 })
 const run = async () => {
   await timeout(0)
@@ -27,7 +27,7 @@ const run = async () => {
 }
 const postRendering = async () => {
   await timeout(1000)
-  data.bol = false
+  data.bol = true
 }
 run()
 
