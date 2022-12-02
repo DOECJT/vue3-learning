@@ -63,6 +63,117 @@ export function createRenderer(options: rendererOptions) {
     insert(el, container, anchor)
   }
 
+  function simpleDiff(oldVnode: Vnode, vnode: Vnode, el: HTMLElement) {
+    const oldChildren = oldVnode.children as Vnode[]
+    const children = vnode.children as Vnode[]
+    let lastIndex = 0
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      let findKey = false
+      for (let j = 0; j < oldChildren.length; j++) {
+        const oldChild = oldChildren[j]
+        if (oldChildren[j].key === children[i].key) {
+          findKey = true
+          patch(oldChild, child, el as Container)
+          if (j < lastIndex) {
+            const prevVNode = children[i - 1]
+            const anchor = prevVNode.el?.nextSibling
+            insert(oldChild.el, el, anchor)
+          } else {
+            lastIndex = j
+          }
+          break
+        }
+      }
+      if (!findKey) {
+        const prevVNode = children[i - 1]
+        let anchor = null
+        if (prevVNode) {
+          anchor = prevVNode.el?.nextSibling
+        } else {
+          anchor = el.firstChild
+        }
+        patch(null, child, el as Container, anchor)
+      }
+    }
+    for (let i = 0; i < oldChildren.length; i++) {
+      const oldChild = oldChildren[i]
+      const hasKey = children.find(vnode => vnode.key === oldChild.key)
+      if (!hasKey) {
+        unmount(oldChild)
+      }
+    }
+  }
+
+  function parallelDiff(oldVnode: Vnode, vnode: Vnode, el: HTMLElement) {
+    const children = vnode.children as Vnode[]
+    const oldChildren = oldVnode.children as (Vnode | undefined)[]
+
+    let startIndex = 0
+    let endIndex = children.length - 1
+    let oldStartIndex = 0
+    let oldEndIndex = oldChildren.length - 1
+
+    while (startIndex <= endIndex && oldStartIndex <= oldEndIndex) {
+      const startVnode = children[startIndex]
+      const endVnode = children[endIndex]
+      const oldStartVnode = oldChildren[oldStartIndex]
+      const oldEndVnode = oldChildren[oldEndIndex]
+
+      if (!oldStartVnode) {
+        oldStartIndex++
+        continue
+      } else if (!oldEndVnode) {
+        oldEndIndex--
+        continue
+      }
+
+      if (startVnode.key === oldStartVnode.key) {
+        patch(oldStartVnode, startVnode, el as Container)
+        startIndex++
+        oldStartIndex++
+      } else if (endVnode.key === oldEndVnode.key) {
+        endIndex--
+        oldEndIndex--
+      } else if (startVnode.key === oldEndVnode.key) {
+        insert(oldEndVnode.el, el, oldStartVnode.el)
+        startIndex++
+        oldEndIndex--
+      } else if (endVnode.key === oldStartVnode.key) {
+        insert(oldStartVnode.el, el, oldEndVnode.el?.nextSibling)
+        endIndex--
+        oldStartIndex++
+      } else {
+        const oldIndexToMove = oldChildren.findIndex(vnode => vnode && vnode.key === startVnode.key)
+        if (oldIndexToMove > 0) {
+          const oldVnodeToMove = oldChildren[oldIndexToMove] as Vnode
+          patch(oldVnodeToMove, startVnode, el as Container)
+          insert(oldVnodeToMove.el, el, oldStartVnode.el)
+          oldChildren[oldIndexToMove] = void 0
+        } else {
+          patch(null, startVnode, el as Container, oldStartVnode.el)
+        }
+        startIndex++
+      }
+    }
+
+    if (startIndex <= endIndex && oldStartIndex > oldEndIndex) {
+      // patch
+      for (let i = startIndex; i <= endIndex; i++) {
+        const oldStartVnode = oldChildren[oldStartIndex]
+        const oldStartEl = oldStartVnode ? oldStartVnode.el : null
+        patch(null, children[i], el as Container, oldStartEl)
+      }
+    } else if (startIndex > endIndex && oldStartIndex <= oldEndIndex) {
+      // unmount
+      for (let i = oldStartIndex; i <= oldEndIndex; i++) {
+        unmount(oldChildren[i] as Vnode)
+      }
+    }
+  }
+
+  function quickDiff(oldVnode: Vnode, vnode: Vnode, el: HTMLElement) {}
+  
   function patchChildren(oldVnode: Vnode, vnode: Vnode, el: HTMLElement) {
     if (typeof vnode.children === 'string') {
       if (Array.isArray(oldVnode.children)) {
@@ -72,45 +183,8 @@ export function createRenderer(options: rendererOptions) {
     } else if (Array.isArray(vnode.children)) {
       if (Array.isArray(oldVnode.children)) {
         // diff
-        const oldChildren = oldVnode.children
-        const children = vnode.children
-        let lastIndex = 0
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i]
-          let findKey = false
-          for (let j = 0; j < oldChildren.length; j++) {
-            const oldChild = oldChildren[j]
-            if (oldChildren[j].key === children[i].key) {
-              findKey = true
-              patch(oldChild, child, el as Container)
-              if (j < lastIndex) {
-                const prevVNode = children[i - 1]
-                const anchor = prevVNode.el?.nextSibling
-                insert(oldChild.el, el, anchor)
-              } else {
-                lastIndex = j
-              }
-              break
-            }
-          }
-          if (!findKey) {
-            const prevVNode = children[i - 1]
-            let anchor = null
-            if (prevVNode) {
-              anchor = prevVNode.el?.nextSibling
-            } else {
-              anchor = el.firstChild
-            }
-            patch(null, child, el as Container, anchor)
-          }
-        }
-        for (let i = 0; i < oldChildren.length; i++) {
-          const oldChild = oldChildren[i]
-          const hasKey = children.find(vnode => vnode.key === oldChild.key)
-          if (!hasKey) {
-            unmount(oldChild)
-          }
-        }
+        // simpleDiff(oldVnode, vnode, el)
+        parallelDiff(oldVnode, vnode, el)
       } else {
         setElementText(el, '')
         vnode.children.forEach(child => patch(null, child, el as Container))

@@ -18,7 +18,7 @@ const container = document.querySelector('#app')
 
 // handle data
 const data = reactive({
-  bol: false
+  bol: true
 })
 const run = async () => {
   await timeout(0)
@@ -27,7 +27,7 @@ const run = async () => {
 }
 const postRendering = async () => {
   await timeout(1000)
-  data.bol = true
+  data.bol = false
 }
 run()
 
@@ -79,15 +79,16 @@ function createVnode() {
     children: data.bol
       ? [
         { type: 'li', children: 'item 1', key: 1 },
-        { type: 'li', children: 'item 3', key: 3 },
         { type: 'li', children: 'item 2', key: 2 },
+        { type: 'li', children: 'item 3', key: 3 },
       ]
       : [
-        { type: 'li', children: 'item 3', key: 3 },
-        { type: 'li', children: 'item 1', key: 1 },
         { type: 'li', children: 'item 4', key: 4 },
-        { type: 'li', children: 'item 5', key: 5 },
         { type: 'li', children: 'item 2', key: 2 },
+        { type: 'li', children: 'item 1', key: 1 },
+        { type: 'li', children: 'item 3', key: 3 },
+        { type: 'li', children: 'item 5', key: 5 },
+        { type: 'li', children: 'item 6', key: 6 },
       ]
   }
 
